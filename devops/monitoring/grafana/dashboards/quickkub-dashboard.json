@@ -1,0 +1,259 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "QuickKub Payment Gateway Dashboard",
+    "tags": ["quickkub", "payment-gateway", "thai-payments"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"quickkub-backend\"}",
+            "legendFormat": "Backend Status"
+          },
+          {
+            "expr": "up{job=\"quickkub-frontend\"}",
+            "legendFormat": "Frontend Status"
+          },
+          {
+            "expr": "up{job=\"quickkub-admin\"}",
+            "legendFormat": "Admin Status"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Payment Transactions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(quickkub_transactions_total[5m])",
+            "legendFormat": "Transactions/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Thai Payment Methods Usage",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "quickkub_thai_payment_methods_usage_total",
+            "legendFormat": "{{method}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(quickkub_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(quickkub_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Response Time (seconds)",
+            "unit": "s"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(quickkub_http_requests_total{status=~\"4..|5..\"}[5m]) / rate(quickkub_http_requests_total[5m])",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Error Rate (%)",
+            "unit": "percentunit"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Redis Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "Memory Used"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory (bytes)",
+            "unit": "bytes"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 8,
+        "title": "Payment Success Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "rate(quickkub_payment_success_total[5m]) / rate(quickkub_payment_total[5m])",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 0.8},
+                {"color": "green", "value": 0.95}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 9,
+        "title": "PromptPay Transactions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "quickkub_promptpay_transactions_total",
+            "legendFormat": "Total Transactions"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 32}
+      },
+      {
+        "id": 10,
+        "title": "KBank Transactions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "quickkub_kbank_transactions_total",
+            "legendFormat": "Total Transactions"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 32}
+      },
+      {
+        "id": 11,
+        "title": "SCB Easy Transactions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "quickkub_scb_transactions_total",
+            "legendFormat": "Total Transactions"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 32}
+      },
+      {
+        "id": 12,
+        "title": "TrueMoney Transactions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "quickkub_truemoney_transactions_total",
+            "legendFormat": "Total Transactions"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 32}
+      },
+      {
+        "id": 13,
+        "title": "System Load",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "node_load1",
+            "legendFormat": "1m Load"
+          },
+          {
+            "expr": "node_load5",
+            "legendFormat": "5m Load"
+          },
+          {
+            "expr": "node_load15",
+            "legendFormat": "15m Load"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36}
+      },
+      {
+        "id": 14,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+            "legendFormat": "Used Memory"
+          },
+          {
+            "expr": "node_memory_MemTotal_bytes",
+            "legendFormat": "Total Memory"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory (bytes)",
+            "unit": "bytes"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

@@ -1,0 +1,250 @@
+services:
+  # ========================================
+  # 🗄️ DATABASE SERVICES
+  # ========================================
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: quickkub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quickkub_db
+      POSTGRES_USER: quickkub_user
+      POSTGRES_PASSWORD: quickkub_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - quickkub-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U quickkub_user -d quickkub_db']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # 🔄 REDIS & QUEUE SERVICES
+  # ========================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: quickkub-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - quickkub-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # 💾 S3 STORAGE SERVICE
+  # ========================================
+
+  minio:
+    image: minio/minio:latest
+    container_name: quickkub-minio
+    restart: unless-stopped
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    networks:
+      - quickkub-network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # 🔧 BACKEND API SERVICE
+  # ========================================
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: quickkub-backend
+    restart: unless-stopped
+    ports:
+      - '3002:3002'
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://quickkub_user:quickkub_password@postgres:5432/quickkub_db
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT=minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+    volumes:
+      - ../backend:/app
+      - /app/node_modules
+    networks:
+      - quickkub-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # 🌐 FRONTEND SERVICE
+  # ========================================
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: quickkub-frontend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3002
+      - NEXT_PUBLIC_ADMIN_URL=http://localhost:3001
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - quickkub-network
+    depends_on:
+      - backend
+
+  # ========================================
+  # 🛠️ ADMIN PANEL SERVICE
+  # ========================================
+
+  admin:
+    build:
+      context: ../admin
+      dockerfile: Dockerfile
+    container_name: quickkub-admin
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      - REACT_APP_API_URL=http://localhost:3002
+      - REACT_APP_FRONTEND_URL=http://localhost:3000
+    volumes:
+      - ../admin:/app
+      - /app/node_modules
+    networks:
+      - quickkub-network
+    depends_on:
+      - backend
+
+  # ========================================
+  # 🏠 LANDING PAGE SERVICE
+  # ========================================
+
+  landing:
+    build:
+      context: ../landing
+      dockerfile: Dockerfile
+    container_name: quickkub-landing
+    restart: unless-stopped
+    ports:
+      - '3004:3004'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3002
+      - NEXT_PUBLIC_ADMIN_URL=http://localhost:3001
+    volumes:
+      - ../landing:/app
+      - /app/node_modules
+    networks:
+      - quickkub-network
+    depends_on:
+      - backend
+
+  # ========================================
+  # 🔍 MONITORING SERVICES
+  # ========================================
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: quickkub-redis-commander
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - quickkub-network
+    depends_on:
+      - redis
+
+  # ========================================
+  # 📊 DATABASE ADMIN TOOL
+  # ========================================
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: quickkub-pgadmin
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@quickkub.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - quickkub-network
+    depends_on:
+      - postgres
+
+  # ========================================
+  # 🔄 QUEUE MONITOR
+  # ========================================
+
+  bull-board:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.bull-board
+    container_name: quickkub-bull-board
+    restart: unless-stopped
+    ports:
+      - '8082:3000'
+    environment:
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - quickkub-network
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  quickkub-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

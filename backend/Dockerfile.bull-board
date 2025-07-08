@@ -1,0 +1,13 @@
+# Bull Board Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# ติดตั้ง bull-board-ui และ dependencies ที่จำเป็น
+RUN npm install -g @bull-board/ui
+
+# เปิดพอร์ต 3000 (ค่าเริ่มต้นของ bull-board)
+EXPOSE 3000
+
+# รัน bull-board-ui ด้วย node
+CMD ["node", "-e", "require('@bull-board/ui').start({ port: 3000, redis: 'redis://redis:6379' })"]

@@ -1,0 +1,314 @@
+# ========================================
+# 🔐 QuickKub Payment Gateway - Security Configuration
+# ========================================
+
+# Firewall Rules (UFW)
+firewall:
+  enabled: true
+  default_policy: deny
+  allowed_ports:
+    - 22 # SSH
+    - 80 # HTTP
+    - 443 # HTTPS
+    - 5432 # PostgreSQL (internal)
+    - 6379 # Redis (internal)
+    - 9000 # MinIO (internal)
+    - 9090 # Prometheus (internal)
+    - 3000 # Grafana (internal)
+    - 5601 # Kibana (internal)
+
+  allowed_ips:
+    - 127.0.0.1
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+
+# SSL/TLS Configuration
+ssl:
+  enabled: true
+  provider: letsencrypt
+  email: admin@quickkub.com
+  domains:
+    - quickkub.com
+    - www.quickkub.com
+    - api.quickkub.com
+    - admin.quickkub.com
+
+  # SSL Security Headers
+  security_headers:
+    Strict-Transport-Security: 'max-age=63072000; includeSubDomains; preload'
+    X-Content-Type-Options: 'nosniff'
+    X-Frame-Options: 'SAMEORIGIN'
+    X-XSS-Protection: '1; mode=block'
+    Referrer-Policy: 'strict-origin-when-cross-origin'
+    Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self';"
+
+# Rate Limiting
+rate_limiting:
+  enabled: true
+  zones:
+    api:
+      rate: 10r/s
+      burst: 20
+      nodelay: true
+    login:
+      rate: 1r/s
+      burst: 5
+      nodelay: true
+    webhook:
+      rate: 5r/s
+      burst: 10
+      nodelay: true
+    payment:
+      rate: 5r/s
+      burst: 15
+      nodelay: true
+
+# Authentication & Authorization
+auth:
+  jwt:
+    secret_length: 64
+    expires_in: 24h
+    refresh_expires_in: 7d
+    algorithm: HS256
+
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special_chars: true
+    max_age_days: 90
+
+  session:
+    secret_length: 32
+    max_age: 24h
+    secure: true
+    http_only: true
+    same_site: strict
+
+# Database Security
+database:
+  encryption:
+    enabled: true
+    algorithm: AES-256-GCM
+    key_rotation_days: 90
+
+  connection:
+    ssl: true
+    ssl_mode: require
+    max_connections: 100
+    connection_timeout: 30s
+
+  backup:
+    encryption: true
+    retention_days: 90
+    schedule: '0 2 * * *'
+
+# API Security
+api:
+  cors:
+    enabled: true
+    origins:
+      - https://quickkub.com
+      - https://admin.quickkub.com
+      - https://api.quickkub.com
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    headers:
+      - Content-Type
+      - Authorization
+      - X-Requested-With
+
+  validation:
+    enabled: true
+    max_request_size: 10MB
+    allowed_content_types:
+      - application/json
+      - application/x-www-form-urlencoded
+      - multipart/form-data
+
+# Payment Security
+payment:
+  encryption:
+    enabled: true
+    algorithm: AES-256-GCM
+    key_rotation_days: 30
+
+  webhook:
+    signature_verification: true
+    signature_algorithm: HMAC-SHA256
+    timeout: 30s
+    retry_attempts: 3
+
+  fraud_detection:
+    enabled: true
+    rules:
+      - name: 'High Amount Check'
+        condition: 'amount > 50000'
+        action: 'review'
+      - name: 'Multiple Failed Attempts'
+        condition: 'failed_attempts > 3'
+        action: 'block'
+      - name: 'Suspicious IP'
+        condition: 'ip_risk_score > 0.8'
+        action: 'review'
+
+# Monitoring & Logging
+monitoring:
+  audit_logging:
+    enabled: true
+    level: info
+    retention_days: 365
+    sensitive_fields:
+      - password
+      - token
+      - secret
+      - credit_card
+
+  security_events:
+    enabled: true
+    alerts:
+      - failed_login_attempts
+      - suspicious_activity
+      - payment_fraud
+      - system_intrusion
+
+  metrics:
+    enabled: true
+    collection_interval: 30s
+    retention_days: 90
+
+# Network Security
+network:
+  vpn:
+    enabled: false
+    type: wireguard
+
+  dns:
+    provider: cloudflare
+    dnssec: true
+    dns_over_https: true
+
+  cdn:
+    enabled: true
+    provider: cloudflare
+    ssl_mode: full_strict
+
+# Backup & Recovery
+backup:
+  enabled: true
+  schedule: '0 2 * * *'
+  retention:
+    daily: 7
+    weekly: 4
+    monthly: 12
+
+  encryption:
+    enabled: true
+    algorithm: AES-256
+
+  storage:
+    type: s3
+    bucket: quickkub-backups
+    region: ap-southeast-1
+
+  verification:
+    enabled: true
+    test_restore: true
+
+# Incident Response
+incident_response:
+  enabled: true
+  team:
+    - role: 'Security Lead'
+      email: 'security@quickkub.com'
+      phone: '+66-xxx-xxx-xxxx'
+    - role: 'System Admin'
+      email: 'admin@quickkub.com'
+      phone: '+66-xxx-xxx-xxxx'
+
+  procedures:
+    - name: 'Data Breach'
+      steps:
+        - 'Immediate containment'
+        - 'Assessment and notification'
+        - 'Investigation and remediation'
+        - 'Post-incident review'
+
+    - name: 'Payment Fraud'
+      steps:
+        - 'Transaction suspension'
+        - 'Fraud analysis'
+        - 'Merchant notification'
+        - 'System security review'
+
+# Compliance
+compliance:
+  pci_dss:
+    enabled: true
+    level: 1
+    requirements:
+      - 'Build and Maintain a Secure Network'
+      - 'Protect Cardholder Data'
+      - 'Maintain Vulnerability Management Program'
+      - 'Implement Strong Access Control Measures'
+      - 'Regularly Monitor and Test Networks'
+      - 'Maintain an Information Security Policy'
+
+  gdpr:
+    enabled: true
+    data_retention:
+      personal_data: 7_years
+      transaction_data: 10_years
+      audit_logs: 7_years
+
+  thai_pdp:
+    enabled: true
+    requirements:
+      - 'Data Protection Impact Assessment'
+      - 'Data Breach Notification'
+      - 'Data Subject Rights'
+      - 'Cross-border Data Transfer'
+
+# Security Testing
+security_testing:
+  automated:
+    enabled: true
+    schedule: 'weekly'
+    tools:
+      - 'OWASP ZAP'
+      - 'Nessus'
+      - 'OpenVAS'
+
+  manual:
+    enabled: true
+    schedule: 'quarterly'
+    scope:
+      - 'Penetration Testing'
+      - 'Code Review'
+      - 'Architecture Review'
+
+  bug_bounty:
+    enabled: false
+    platform: 'HackerOne'
+    scope: 'public'
+
+# Updates & Patches
+updates:
+  automatic:
+    enabled: true
+    schedule: 'weekly'
+    security_only: true
+
+  testing:
+    enabled: true
+    staging_environment: true
+
+  rollback:
+    enabled: true
+    max_versions: 3
